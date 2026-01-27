@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>탄소중립평가사 수료증 발급</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <h1>2026 탄소중립평가사 수료증 발급</h1>
+        <p class="subtitle">수료자 정보를 입력하시면 수료증을 다운로드 받으실 수 있습니다.</p>
+      </div>
+
+      <form id="certificateForm">
+        <div class="form-group">
+          <label for="name">성명</label>
+          <input type="text" id="name" name="name" required placeholder="홍길동" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="birthDate">생년월일</label>
+          <input type="date" id="birthDate" name="birthDate" required>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">
+          <span class="btn-text">수료증 다운로드</span>
+          <span class="btn-loading" style="display: none;">
+            <span class="spinner"></span>
+            처리 중...
+          </span>
+        </button>
+      </form>
+
+      <div id="message" class="message" style="display: none;"></div>
+
+      <div class="admin-link">
+        <a href="admin-login.html">관리자 로그인</a>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <p>&copy; 2026 탄소중립평가사 교육 수료증 발급 시스템</p>
+    </footer>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 대시보드</title>
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <div class="admin-container">
+    <header class="admin-header">
+      <h1>관리자 대시보드</h1>
+      <button id="logoutBtn" class="logout-btn">로그아웃</button>
+    </header>
+
+    <main class="admin-main">
+      <!-- 수료증 업로드 섹션 -->
+      <section class="section upload-section">
+        <h2>수료증 파일 업로드</h2>
+
+        <div class="upload-area" id="uploadArea">
+          <input type="file" id="fileInput" multiple accept=".pdf" style="display: none;">
+          <div class="upload-placeholder">
+            <div class="upload-icon">📄</div>
+            <p class="upload-text">여기에 파일을 드래그 앤 드롭하세요</p>
+            <p class="upload-sub">(최대 150개 파일 동시 업로드 가능)</p>
+            <p class="upload-sub">파일명 형식: 성명_생년월일.pdf</p>
+            <button type="button" class="select-btn" id="selectBtn">파일 선택</button>
+          </div>
+        </div>
+
+        <div id="selectedFiles" class="selected-files" style="display: none;">
+          <div class="selected-header">
+            <h3>선택된 파일: <span id="fileCount">0</span>개</h3>
+            <button type="button" id="clearFilesBtn" class="clear-btn">선택 초기화</button>
+          </div>
+          <div id="fileList" class="file-list"></div>
+          <button type="button" id="uploadBtn" class="upload-btn">모두 업로드</button>
+        </div>
+
+        <div id="uploadProgress" class="upload-progress" style="display: none;">
+          <p>업로드 중... <span id="progressText">0%</span></p>
+          <div class="progress-bar">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 업로드된 수료증 목록 -->
+      <section class="section list-section">
+        <h2>업로드된 수료증 목록</h2>
+
+        <div class="list-controls">
+          <input type="text" id="searchInput" class="search-input" placeholder="파일명 검색...">
+          <div class="control-buttons">
+            <button type="button" id="refreshBtn" class="control-btn">새로고침</button>
+            <button type="button" id="deleteAllBtn" class="control-btn danger">전체 삭제</button>
+          </div>
+        </div>
+
+        <div class="certificate-count">
+          총 <span id="totalCount">0</span>개
+        </div>
+
+        <div id="certificateList" class="certificate-list">
+          <p class="no-data">업로드된 수료증이 없습니다.</p>
+        </div>
+      </section>
+
+      <!-- 수료자 리스트 관리 -->
+      <section class="section students-section">
+        <h2>수료자 리스트 관리</h2>
+
+        <div class="students-controls">
+          <button type="button" id="downloadStudentsBtn" class="control-btn">JSON 파일 다운로드</button>
+          <button type="button" id="uploadStudentsBtn" class="control-btn">JSON 파일 업로드</button>
+          <input type="file" id="studentsFileInput" accept=".json" style="display: none;">
+        </div>
+
+        <p class="students-info">
+          현재 등록된 수료자: <strong id="studentsCount">0</strong>명
+        </p>
+      </section>
+    </main>
+
+    <footer class="admin-footer">
+      <p>&copy; 2026 탄소중립평가사 수료증 발급 시스템 관리자</p>
+    </footer>
+  </div>
+
+  <script src="js/admin-dashboard.js"></script>
+</body>
+</html>
