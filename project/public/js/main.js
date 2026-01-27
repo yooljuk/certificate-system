@@ -26,21 +26,43 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ name, birthDate })
       });
 
-      const result = await response.json();
+      // Content-Type 확인
+      const contentType = response.headers.get('content-type');
 
-      if (result.success && result.downloadUrl) {
-        // Cloudinary URL로 다운로드
+      // JSON 응답인 경우
+      if (contentType && contentType.includes('application/json')) {
+        const result = await response.json();
+
+        if (result.success && result.downloadUrl) {
+          // Cloudinary URL로 새 탭에서 다운로드
+          window.open(result.downloadUrl, '_blank');
+          showMessage('수료증이 다운로드되었습니다!', 'success');
+        } else {
+          showMessage(result.message || '다운로드에 실패했습니다.', 'error');
+        }
+      }
+      // PDF 직접 반환인 경우 (이전 버전 호환)
+      else if (contentType && contentType.includes('application/pdf')) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = result.downloadUrl;
-        a.download = result.filename || `수료증_${name}_${birthDate}.pdf`;
-        a.target = '_blank';
+        a.href = url;
+        a.download = `수료증_${name}_${birthDate}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-
+        window.URL.revokeObjectURL(url);
         showMessage('수료증이 다운로드되었습니다!', 'success');
-      } else {
-        showMessage(result.message || '다운로드에 실패했습니다.', 'error');
+      }
+      // 기타 응답
+      else {
+        const text = await response.text();
+        try {
+          const result = JSON.parse(text);
+          showMessage(result.message || '다운로드에 실패했습니다.', 'error');
+        } catch {
+          showMessage('서버 응답 오류가 발생했습니다.', 'error');
+        }
       }
 
     } catch (error) {
