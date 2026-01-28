@@ -91,9 +91,13 @@
         <h2>수료자 리스트 관리</h2>
 
         <div class="students-controls">
-          <button type="button" id="downloadStudentsBtn" class="control-btn">JSON 파일 다운로드</button>
-          <button type="button" id="uploadStudentsBtn" class="control-btn">JSON 파일 업로드</button>
-          <input type="file" id="studentsFileInput" accept=".json" style="display: none;">
+          <button type="button" id="uploadStudentsBtn" class="control-btn">Excel 파일 업로드</button>
+          <input type="file" id="studentsFileInput" accept=".xlsx,.xls" style="display: none;">
+        </div>
+
+        <div class="excel-format-info">
+          <p><strong>Excel 형식:</strong> A열=이름, B열=생년월일 (첫 행은 헤더)</p>
+          <p><strong>예시:</strong> 홍길동 | 1990-01-01</p>
         </div>
 
         <p class="students-info">
@@ -107,6 +111,8 @@
     </footer>
   </div>
 
+  <!-- SheetJS for Excel parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="js/admin-dashboard.js"></script>
 </body>
 </html>

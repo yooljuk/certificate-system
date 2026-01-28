@@ -28,12 +28,11 @@ function initializeEventListeners() {
   // 검색
   document.getElementById('searchInput').addEventListener('input', filterCertificates);
 
-  // 수료자 리스트 관리
-  document.getElementById('downloadStudentsBtn').addEventListener('click', downloadStudents);
+  // 수료자 리스트 관리 (Excel 업로드)
   document.getElementById('uploadStudentsBtn').addEventListener('click', () => {
     document.getElementById('studentsFileInput').click();
   });
-  document.getElementById('studentsFileInput').addEventListener('change', uploadStudents);
+  document.getElementById('studentsFileInput').addEventListener('change', uploadStudentsExcel);
 }
 
 // 수료증 목록 로드 (Google Drive)
@@ -110,57 +109,60 @@ async function loadStudentsInfo() {
   }
 }
 
-// 수료자 리스트 다운로드
-async function downloadStudents() {
-  try {
-    const response = await fetch('/api/admin/students');
-    const result = await response.json();
-
-    if (result.success) {
-      const blob = new Blob([JSON.stringify(result.students, null, 2)],
-        { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'students.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    }
-  } catch (error) {
-    console.error('다운로드 오류:', error);
-    alert('다운로드 중 오류가 발생했습니다.');
-  }
-}
-
-// 수료자 리스트 업로드
-async function uploadStudents(e) {
+// 수료자 리스트 Excel 업로드
+async function uploadStudentsExcel(e) {
   const file = e.target.files[0];
   if (!file) return;
 
   try {
-    const text = await file.text();
-    let students;
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data, { type: 'array' });
 
-    try {
-      students = JSON.parse(text);
-    } catch (parseError) {
-      alert('JSON 파일 형식이 올바르지 않습니다.');
+    // 첫 번째 시트 가져오기
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    // 시트를 JSON으로 변환 (첫 행은 헤더로 처리)
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+    if (rows.length < 2) {
+      alert('Excel 파일에 데이터가 없습니다. (헤더 제외 최소 1행 필요)');
       return;
     }
 
-    if (!Array.isArray(students)) {
-      alert('수료자 목록은 배열 형태여야 합니다.');
-      return;
-    }
+    // 첫 행(헤더) 제외하고 데이터 변환
+    const students = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const name = row[0];  // A열: 이름
+      let birthDate = row[1];  // B열: 생년월일
 
-    // 데이터 검증
-    for (let i = 0; i < students.length; i++) {
-      if (!students[i].name || !students[i].birthDate) {
-        alert(`${i + 1}번째 항목에 name 또는 birthDate가 누락되었습니다.`);
+      // 빈 행 건너뛰기
+      if (!name && !birthDate) continue;
+
+      if (!name || !birthDate) {
+        alert(`${i + 1}행에 이름 또는 생년월일이 누락되었습니다.`);
         return;
       }
+
+      // 생년월일 형식 변환 (Excel 날짜 숫자 또는 문자열 처리)
+      if (typeof birthDate === 'number') {
+        // Excel 날짜 숫자를 문자열로 변환
+        const date = XLSX.SSF.parse_date_code(birthDate);
+        birthDate = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+      } else {
+        birthDate = String(birthDate).trim();
+      }
+
+      students.push({
+        name: String(name).trim(),
+        birthDate: birthDate
+      });
+    }
+
+    if (students.length === 0) {
+      alert('유효한 수료자 데이터가 없습니다.');
+      return;
     }
 
     const response = await fetch('/api/admin/students', {
@@ -179,7 +181,7 @@ async function uploadStudents(e) {
     }
   } catch (error) {
     console.error('업로드 오류:', error);
-    alert('파일을 읽는 중 오류가 발생했습니다.');
+    alert('Excel 파일을 읽는 중 오류가 발생했습니다.');
   }
 
   // 파일 입력 초기화
