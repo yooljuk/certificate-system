@@ -156,7 +156,7 @@ app.post('/api/download-certificate', async (req, res) => {
 
   // 2단계: Cloudinary에서 파일 찾기
   const filename = `${name}_${birthDate}`;
-  const publicId = `certificates/${filename}`;
+  const publicId = `certificates/${filename}.pdf`;
 
   try {
     const result = await cloudinary.api.resource(publicId, { resource_type: 'raw' });
