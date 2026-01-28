@@ -81,7 +81,8 @@ function uploadToCloudinary(buffer, filename) {
         folder: 'certificates',
         public_id: filename.replace('.pdf', ''),
         resource_type: 'raw',
-        format: 'pdf'
+        format: 'pdf',
+        access_mode: 'public'
       },
       (error, result) => {
         if (error) reject(error);
