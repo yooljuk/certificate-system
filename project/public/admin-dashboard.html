@@ -14,34 +14,54 @@
     </header>
 
     <main class="admin-main">
-      <!-- 수료증 업로드 섹션 -->
+      <!-- Google Drive 파일 관리 안내 -->
       <section class="section upload-section">
-        <h2>수료증 파일 업로드</h2>
+        <h2>수료증 파일 관리 (Google Drive)</h2>
 
-        <div class="upload-area" id="uploadArea">
-          <input type="file" id="fileInput" multiple accept=".pdf" style="display: none;">
-          <div class="upload-placeholder">
-            <div class="upload-icon">📄</div>
-            <p class="upload-text">여기에 파일을 드래그 앤 드롭하세요</p>
-            <p class="upload-sub">(최대 150개 파일 동시 업로드 가능)</p>
-            <p class="upload-sub">파일명 형식: 성명_생년월일.pdf</p>
-            <button type="button" class="select-btn" id="selectBtn">파일 선택</button>
+        <div class="google-drive-info">
+          <div class="info-header">
+            <span class="icon">📁</span>
+            <h3>Google Drive를 통해 파일을 관리합니다</h3>
           </div>
-        </div>
 
-        <div id="selectedFiles" class="selected-files" style="display: none;">
-          <div class="selected-header">
-            <h3>선택된 파일: <span id="fileCount">0</span>개</h3>
-            <button type="button" id="clearFilesBtn" class="clear-btn">선택 초기화</button>
-          </div>
-          <div id="fileList" class="file-list"></div>
-          <button type="button" id="uploadBtn" class="upload-btn">모두 업로드</button>
-        </div>
+          <div class="info-content">
+            <h4>📤 파일 업로드 방법:</h4>
+            <ol>
+              <li>
+                <strong>Google Drive 폴더 접속</strong><br>
+                <a href="https://drive.google.com" target="_blank" class="drive-link">
+                  drive.google.com
+                </a>
+              </li>
+              <li>
+                <strong>수료증 폴더로 이동</strong><br>
+                공유된 "수료증" 폴더를 클릭하세요
+              </li>
+              <li>
+                <strong>파일 업로드</strong><br>
+                PDF 파일들을 드래그 앤 드롭하거나<br>
+                "새로 만들기" → "파일 업로드" 클릭
+              </li>
+            </ol>
 
-        <div id="uploadProgress" class="upload-progress" style="display: none;">
-          <p>업로드 중... <span id="progressText">0%</span></p>
-          <div class="progress-bar">
-            <div id="progressFill" class="progress-fill"></div>
+            <div class="file-rules">
+              <h4>📋 파일명 규칙 (필수):</h4>
+              <ul>
+                <li><strong>형식:</strong> <code>성명_생년월일.pdf</code></li>
+                <li><strong>예시:</strong> <code>홍길동_1990-01-01.pdf</code></li>
+                <li><strong>주의:</strong> 파일명은 정확히 일치해야 다운로드됩니다</li>
+              </ul>
+            </div>
+
+            <div class="benefits">
+              <h4>✅ Google Drive의 장점:</h4>
+              <ul>
+                <li>무료 15GB 저장 공간</li>
+                <li>익숙한 인터페이스</li>
+                <li>드래그 앤 드롭으로 간편 업로드</li>
+                <li>파일 미리보기 가능</li>
+              </ul>
+            </div>
           </div>
         </div>
       </section>
@@ -54,7 +74,6 @@
           <input type="text" id="searchInput" class="search-input" placeholder="파일명 검색...">
           <div class="control-buttons">
             <button type="button" id="refreshBtn" class="control-btn">새로고침</button>
-            <button type="button" id="deleteAllBtn" class="control-btn danger">전체 삭제</button>
           </div>
         </div>
 
@@ -63,7 +82,7 @@
         </div>
 
         <div id="certificateList" class="certificate-list">
-          <p class="no-data">업로드된 수료증이 없습니다.</p>
+          <p class="no-data">파일 목록을 불러오는 중...</p>
         </div>
       </section>
 

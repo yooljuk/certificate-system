@@ -1,37 +1,15 @@
 const express = require('express');
-const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const cloudinary = require('cloudinary').v2;
-const streamifier = require('streamifier');
 const axios = require('axios');
 
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// Cloudinary 설정
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-// Multer 메모리 스토리지 (Cloudinary 업로드용)
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 파일당 10MB 제한
-    files: 150 // 최대 150개 파일
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
-      cb(null, true);
-    } else {
-      cb(new Error('PDF 파일만 업로드할 수 있습니다.'), false);
-    }
-  }
-});
+// Google Drive 설정
+const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
 // 데이터 파일 경로
 const DATA_DIR = './data';
@@ -74,56 +52,41 @@ function loadConfig() {
   }
 }
 
-// Cloudinary에 파일 업로드
-function uploadToCloudinary(buffer, filename) {
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: 'certificates',
-        public_id: filename.replace('.pdf', ''),
-        resource_type: 'raw',
-        format: 'pdf',
-        access_mode: 'public'
-      },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result);
-      }
-    );
-    streamifier.createReadStream(buffer).pipe(uploadStream);
-  });
-}
-
-// Cloudinary에서 파일 목록 조회
-async function getCloudinaryFiles() {
+// Google Drive에서 파일 검색
+async function findFileInGoogleDrive(filename) {
   try {
-    const result = await cloudinary.api.resources({
-      type: 'upload',
-      prefix: 'certificates/',
-      resource_type: 'raw',
-      max_results: 500
-    });
-    return result.resources.map(file => ({
-      filename: file.public_id.replace('certificates/', '') + '.pdf',
-      public_id: file.public_id,
-      size: file.bytes,
-      url: file.secure_url,
-      uploadedAt: file.created_at
-    }));
+    const query = encodeURIComponent(`name='${filename}' and '${GOOGLE_DRIVE_FOLDER_ID}' in parents`);
+    const url = `https://www.googleapis.com/drive/v3/files?q=${query}&key=${GOOGLE_API_KEY}&fields=files(id,name,size)`;
+
+    console.log('🔍 Google Drive 검색:', filename);
+
+    const response = await axios.get(url);
+
+    if (response.data.files && response.data.files.length > 0) {
+      console.log('✅ 파일 찾음:', response.data.files[0]);
+      return response.data.files[0];
+    }
+
+    console.log('❌ 파일 없음');
+    return null;
   } catch (error) {
-    console.error('Cloudinary 파일 목록 조회 오류:', error);
-    return [];
+    console.error('Google Drive 검색 오류:', error.message);
+    return null;
   }
 }
 
-// Cloudinary에서 파일 삭제
-async function deleteFromCloudinary(publicId) {
+// Google Drive에서 폴더 내 모든 파일 목록 조회
+async function listGoogleDriveFiles() {
   try {
-    await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
-    return true;
+    const query = encodeURIComponent(`'${GOOGLE_DRIVE_FOLDER_ID}' in parents and mimeType='application/pdf'`);
+    const url = `https://www.googleapis.com/drive/v3/files?q=${query}&key=${GOOGLE_API_KEY}&fields=files(id,name,size,createdTime)&pageSize=1000`;
+
+    const response = await axios.get(url);
+
+    return response.data.files || [];
   } catch (error) {
-    console.error('Cloudinary 파일 삭제 오류:', error);
-    return false;
+    console.error('Google Drive 목록 조회 오류:', error.message);
+    return [];
   }
 }
 
@@ -134,6 +97,9 @@ async function deleteFromCloudinary(publicId) {
 // 수료자 검증 및 파일 다운로드 API
 app.post('/api/download-certificate', async (req, res) => {
   const { name, birthDate } = req.body;
+
+  console.log('=== 다운로드 요청 ===');
+  console.log('요청 정보:', { name, birthDate });
 
   if (!name || !birthDate) {
     return res.json({
@@ -150,41 +116,50 @@ app.post('/api/download-certificate', async (req, res) => {
   );
 
   if (!student) {
+    console.log('❌ 수료자 검증 실패');
     return res.json({
       success: false,
       message: '죄송합니다. 수료자 목록에 없습니다. 정보를 다시 입력해주세요.'
     });
   }
 
-  // 2단계: Cloudinary에서 파일 찾기
-  const filename = `${name}_${birthDate}`;
-  const publicId = `certificates/${filename}.pdf`;
+  console.log('✅ 수료자 검증 성공');
+
+  // 2단계: Google Drive에서 파일 찾기
+  const filename = `${name}_${birthDate}.pdf`;
 
   try {
-    // Cloudinary에서 파일 정보 가져오기
-    const result = await cloudinary.api.resource(publicId, { resource_type: 'raw' });
-    console.log('✅ Cloudinary 파일 찾음:', result.secure_url);
+    const file = await findFileInGoogleDrive(filename);
 
-    // Cloudinary에서 파일 다운로드 (서버가 프록시)
-    const response = await axios.get(result.secure_url, {
-      responseType: 'arraybuffer'
+    if (!file) {
+      return res.json({
+        success: false,
+        message: '수료증 파일을 찾을 수 없습니다. 관리자에게 문의해주세요.'
+      });
+    }
+
+    // Google Drive 직접 다운로드 URL
+    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&key=${GOOGLE_API_KEY}`;
+
+    console.log('📥 다운로드 시작...');
+
+    // Google Drive에서 파일 다운로드
+    const response = await axios.get(downloadUrl, {
+      responseType: 'arraybuffer',
+      timeout: 30000
     });
+
     console.log('✅ 파일 다운로드 완료:', response.data.byteLength, 'bytes');
 
     // PDF 파일로 응답
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
     res.send(Buffer.from(response.data));
 
-  } catch (error) {
-    console.error('❌ 파일 조회 오류:', error.message);
+    console.log('✅ 사용자에게 전송 완료');
 
-    if (error.error && error.error.http_code === 404) {
-      return res.json({
-        success: false,
-        message: '수료증 파일을 찾을 수 없습니다. 파일이 업로드되었는지 확인해주세요.'
-      });
-    }
+  } catch (error) {
+    console.error('❌ 파일 다운로드 오류:', error.message);
 
     return res.json({
       success: false,
@@ -209,102 +184,22 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
-// 수료증 대량 업로드 API
-app.post('/api/admin/upload-certificates', upload.array('certificates', 150), async (req, res) => {
-  try {
-    if (!req.files || req.files.length === 0) {
-      return res.json({
-        success: false,
-        message: '업로드할 파일이 없습니다.'
-      });
-    }
-
-    const uploadResults = [];
-    const errors = [];
-
-    for (const file of req.files) {
-      try {
-        const filename = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        const result = await uploadToCloudinary(file.buffer, filename);
-        uploadResults.push({
-          filename: filename,
-          url: result.secure_url
-        });
-      } catch (error) {
-        console.error('파일 업로드 실패:', file.originalname, error);
-        errors.push(file.originalname);
-      }
-    }
-
-    if (uploadResults.length > 0) {
-      res.json({
-        success: true,
-        message: `${uploadResults.length}개 파일이 업로드되었습니다.${errors.length > 0 ? ` (${errors.length}개 실패)` : ''}`,
-        files: uploadResults
-      });
-    } else {
-      res.json({
-        success: false,
-        message: '모든 파일 업로드에 실패했습니다.'
-      });
-    }
-  } catch (error) {
-    console.error('업로드 오류:', error);
-    res.status(500).json({
-      success: false,
-      message: '파일 업로드 중 오류가 발생했습니다.'
-    });
-  }
-});
-
-// 업로드된 수료증 목록 조회 API
+// 업로드된 수료증 목록 조회 API (Google Drive)
 app.get('/api/admin/certificates', async (req, res) => {
   try {
-    const files = await getCloudinaryFiles();
-    res.json({ success: true, files });
+    const files = await listGoogleDriveFiles();
+
+    const formattedFiles = files.map(file => ({
+      filename: file.name,
+      size: file.size,
+      uploadedAt: file.createdTime,
+      driveId: file.id
+    }));
+
+    res.json({ success: true, files: formattedFiles });
   } catch (error) {
     console.error('파일 목록 조회 오류:', error);
     res.status(500).json({ success: false, message: '파일 목록 조회 실패' });
-  }
-});
-
-// 수료증 파일 삭제 API
-app.delete('/api/admin/certificate/:filename', async (req, res) => {
-  try {
-    const filename = decodeURIComponent(req.params.filename);
-    const publicId = `certificates/${filename.replace('.pdf', '')}`;
-
-    const success = await deleteFromCloudinary(publicId);
-
-    if (success) {
-      res.json({ success: true, message: '파일이 삭제되었습니다.' });
-    } else {
-      res.json({ success: false, message: '파일 삭제에 실패했습니다.' });
-    }
-  } catch (error) {
-    console.error('파일 삭제 오류:', error);
-    res.status(500).json({ success: false, message: '파일 삭제 실패' });
-  }
-});
-
-// 전체 수료증 삭제 API
-app.delete('/api/admin/certificates/all', async (req, res) => {
-  try {
-    const files = await getCloudinaryFiles();
-    let deletedCount = 0;
-
-    for (const file of files) {
-      const success = await deleteFromCloudinary(file.public_id);
-      if (success) deletedCount++;
-    }
-
-    res.json({
-      success: true,
-      message: `${deletedCount}개 파일이 삭제되었습니다.`
-    });
-  } catch (error) {
-    console.error('전체 삭제 오류:', error);
-    res.status(500).json({ success: false, message: '전체 삭제 실패' });
   }
 });
 
@@ -349,20 +244,6 @@ app.post('/api/admin/students', (req, res) => {
 
 // 에러 핸들러
 app.use((err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({
-        success: false,
-        message: '파일 크기는 10MB를 초과할 수 없습니다.'
-      });
-    }
-    if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({
-        success: false,
-        message: '한 번에 최대 150개 파일만 업로드할 수 있습니다.'
-      });
-    }
-  }
   console.error('서버 오류:', err);
   res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
 });
@@ -374,6 +255,6 @@ app.listen(PORT, () => {
   console.log(`  탄소중립평가사 수료증 발급 시스템`);
   console.log(`========================================`);
   console.log(`  서버가 포트 ${PORT}에서 실행 중입니다.`);
-  console.log(`  Cloudinary 연동: ${process.env.CLOUDINARY_CLOUD_NAME ? '활성화' : '비활성화'}`);
+  console.log(`  Google Drive 연동: ${GOOGLE_DRIVE_FOLDER_ID ? '활성화' : '비활성화'}`);
   console.log(`========================================`);
 });
