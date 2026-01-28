@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
+const axios = require('axios');
 
 const app = express();
 app.use(express.json());
@@ -160,19 +161,34 @@ app.post('/api/download-certificate', async (req, res) => {
   const publicId = `certificates/${filename}.pdf`;
 
   try {
+    // Cloudinary에서 파일 정보 가져오기
     const result = await cloudinary.api.resource(publicId, { resource_type: 'raw' });
+    console.log('✅ Cloudinary 파일 찾음:', result.secure_url);
 
-    // 다운로드 URL 반환
-    res.json({
-      success: true,
-      downloadUrl: result.secure_url,
-      filename: `${filename}.pdf`
+    // Cloudinary에서 파일 다운로드 (서버가 프록시)
+    const response = await axios.get(result.secure_url, {
+      responseType: 'arraybuffer'
     });
+    console.log('✅ 파일 다운로드 완료:', response.data.byteLength, 'bytes');
+
+    // PDF 파일로 응답
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}.pdf"`);
+    res.send(Buffer.from(response.data));
+
   } catch (error) {
-    console.error('파일 조회 오류:', error);
+    console.error('❌ 파일 조회 오류:', error.message);
+
+    if (error.error && error.error.http_code === 404) {
+      return res.json({
+        success: false,
+        message: '수료증 파일을 찾을 수 없습니다. 파일이 업로드되었는지 확인해주세요.'
+      });
+    }
+
     return res.json({
       success: false,
-      message: '수료증 파일을 찾을 수 없습니다. 관리자에게 문의해주세요.'
+      message: '수료증 파일을 불러오는 중 오류가 발생했습니다. 관리자에게 문의해주세요.'
     });
   }
 });
