@@ -46,6 +46,28 @@
     </footer>
   </div>
 
+  <!-- 구글 드라이브 링크 모달 -->
+  <div id="driveModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-icon">🎓</span>
+        <h2>수료를 축하합니다!</h2>
+        <p>수료증이 다운로드되었습니다.</p>
+      </div>
+      <hr class="modal-divider">
+      <div class="modal-body">
+        <h3>📚 추가 학습 자료</h3>
+        <p>교육 자료와 참고 문서를 확인하실 수 있습니다.</p>
+        <input type="text" id="driveLink" class="drive-link-input" readonly>
+        <div class="modal-buttons">
+          <button type="button" class="modal-btn copy-btn" onclick="copyDriveLink()">📋 링크 복사</button>
+          <button type="button" class="modal-btn open-btn" onclick="openDriveLink()">🔗 바로가기</button>
+        </div>
+        <button type="button" class="modal-btn close-btn" onclick="closeDriveModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/main.js"></script>
 </body>
 </html>

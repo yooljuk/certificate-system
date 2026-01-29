@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
           // Cloudinary URL로 새 탭에서 다운로드
           window.open(result.downloadUrl, '_blank');
           showMessage('수료증이 다운로드되었습니다!', 'success');
+          setTimeout(() => showDriveModal(), 500);
         } else {
           showMessage(result.message || '다운로드에 실패했습니다.', 'error');
         }
@@ -53,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
         showMessage('수료증이 다운로드되었습니다!', 'success');
+        setTimeout(() => showDriveModal(), 500);
       }
       // 기타 응답
       else {
@@ -92,5 +94,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hideMessage() {
     messageDiv.style.display = 'none';
+  }
+});
+
+// ========================================
+// 구글 드라이브 링크 모달 함수들
+// ========================================
+
+// 구글 드라이브 공유 링크 (여기에 실제 링크 입력)
+const GOOGLE_DRIVE_LINK = 'https://drive.google.com/drive/folders/여기에_폴더ID_입력';
+
+function showDriveModal() {
+  const modal = document.getElementById('driveModal');
+  const linkInput = document.getElementById('driveLink');
+  linkInput.value = GOOGLE_DRIVE_LINK;
+  modal.style.display = 'flex';
+}
+
+function closeDriveModal() {
+  const modal = document.getElementById('driveModal');
+  modal.style.display = 'none';
+}
+
+function copyDriveLink() {
+  const linkInput = document.getElementById('driveLink');
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(linkInput.value)
+      .then(() => alert('링크가 복사되었습니다!'))
+      .catch(() => fallbackCopy(linkInput));
+  } else {
+    fallbackCopy(linkInput);
+  }
+}
+
+function fallbackCopy(input) {
+  input.select();
+  document.execCommand('copy');
+  alert('링크가 복사되었습니다!');
+}
+
+function openDriveLink() {
+  window.open(GOOGLE_DRIVE_LINK, '_blank');
+  closeDriveModal();
+}
+
+// ESC 키로 모달 닫기
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeDriveModal();
   }
 });
