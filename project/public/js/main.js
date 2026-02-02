@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ========================================
 
 // 구글 드라이브 공유 링크 (여기에 실제 링크 입력)
-const GOOGLE_DRIVE_LINK = 'https://drive.google.com/drive/folders/여기에_폴더ID_입력';
+const GOOGLE_DRIVE_LINK = 'https://drive.google.com/drive/folders/1JAcNMW_Ugie8hmeB8t6kh-1klZrFzxaW?usp=sharing';
 
 function showDriveModal() {
   const modal = document.getElementById('driveModal');
